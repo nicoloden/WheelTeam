@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruota Squadre</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        canvas {
+            margin: 20px auto;
+            display: block;
+            background: #f3f3f3;
+            border: 2px solid #ccc;
+        }
+        #teams {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+        .team {
+            width: 45%;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        #inputArea {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ruota Squadre</h1>
+    <div id="inputArea">
+        <textarea id="namesInput" rows="5" cols="30" placeholder="Inserisci i nomi, uno per riga"></textarea><br>
+        <button id="startButton">Crea la Ruota</button>
+    </div>
+    <canvas id="wheel" width="300" height="300" style="display:none;"></canvas>
+    <button id="spinButton" style="display:none;">Gira la Ruota</button>
+    <div id="teams" style="display:none;">
+        <div class="team">
+            <h2>Squadra 1</h2>
+            <ul id="team1"></ul>
+        </div>
+        <div class="team">
+            <h2>Squadra 2</h2>
+            <ul id="team2"></ul>
+        </div>
+    </div>
+
+    <script>
+        let names = [];
+        const colors = ['#FF5733', '#33FF57', '#5733FF', '#FF33A5', '#33FFF6', '#FFBD33', '#A833FF', '#33FFBD', '#F6FF33', '#3357FF'];
+        const team1 = [];
+        const team2 = [];
+
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinButton = document.getElementById('spinButton');
+        const startButton = document.getElementById('startButton');
+        const namesInput = document.getElementById('namesInput');
+        const team1List = document.getElementById('team1');
+        const team2List = document.getElementById('team2');
+        
+        let currentAngle = 0;
+        let isSpinning = false;
+
+        function drawWheel() {
+            const numSegments = names.length;
+            const angleStep = (2 * Math.PI) / numSegments;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            names.forEach((name, i) => {
+                const startAngle = currentAngle + i * angleStep;
+                const endAngle = startAngle + angleStep;
+
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, canvas.height / 2);
+                ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(startAngle + angleStep / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#000";
+                ctx.fillText(name, canvas.width / 2 - 10, 10);
+                ctx.restore();
+            });
+        }
+
+        function spinWheel() {
+            if (isSpinning || names.length === 0) return;
+
+            isSpinning = true;
+            let spins = Math.floor(Math.random() * 5) + 5;
+            let extraAngle = Math.random() * (2 * Math.PI);
+
+            const totalAngle = spins * 2 * Math.PI + extraAngle;
+            const duration = 3000;
+            const start = performance.now();
+
+            function animate(now) {
+                const elapsed = now - start;
+                if (elapsed < duration) {
+                    currentAngle += (totalAngle / duration) * (now - start) / 1000;
+                    drawWheel();
+                    requestAnimationFrame(animate);
+                } else {
+                    currentAngle += totalAngle % (2 * Math.PI);
+                    drawWheel();
+                    selectWinner();
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function selectWinner() {
+            const numSegments = names.length;
+            const angleStep = (2 * Math.PI) / numSegments;
+            const winnerIndex = Math.floor(((2 * Math.PI - currentAngle % (2 * Math.PI)) / angleStep) % numSegments);
+
+            const winner = names.splice(winnerIndex, 1)[0];
+            (team1.length <= team2.length ? team1 : team2).push(winner);
+
+            updateTeams();
+            isSpinning = false;
+
+            if (names.length === 0) {
+                spinButton.disabled = true;
+                alert("Tutti sono stati assegnati alle squadre!");
+            }
+
+            drawWheel();
+        }
+
+        function updateTeams() {
+            team1List.innerHTML = team1.map(player => `<li>${player}</li>`).join('');
+            team2List.innerHTML = team2.map(player => `<li>${player}</li>`).join('');
+        }
+
+        startButton.addEventListener('click', () => {
+            const input = namesInput.value.trim();
+            if (!input) {
+                alert("Inserisci almeno un nome!");
+                return;
+            }
+
+            names = input.split('\n').map(name => name.trim()).filter(name => name);
+            if (names.length < 2) {
+                alert("Inserisci almeno due nomi!");
+                return;
+            }
+
+            document.getElementById('inputArea').style.display = 'none';
+            canvas.style.display = 'block';
+            spinButton.style.display = 'inline-block';
+            document.getElementById('teams').style.display = 'flex';
+
+            drawWheel();
+        });
+
+        spinButton.addEventListener('click', spinWheel);
+    </script>
+</body>
+</html>
